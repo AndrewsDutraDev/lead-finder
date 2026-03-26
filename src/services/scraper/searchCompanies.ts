@@ -1,22 +1,34 @@
-import type { RawCompany, SearchRequest } from "@/types/company";
+import type { GeneratedSearchQuery, RawCompany, SearchRequest } from "@/types/company";
 import { ExampleDirectoryProvider } from "@/services/scraper/providers/exampleDirectoryProvider";
 import { GoogleMapsProvider } from "@/services/scraper/providers/googleMapsProvider";
 import type { ScraperProvider } from "@/services/scraper/providers/baseProvider";
 
 const providers: ScraperProvider[] = [new GoogleMapsProvider(), new ExampleDirectoryProvider()];
 
-export async function searchCompanies(params: SearchRequest) {
+export async function searchCompanies(params: SearchRequest, searchQueries: GeneratedSearchQuery[]) {
   const activeProviders = providers.filter((provider) => provider.supports(params));
-  const settled = await Promise.allSettled(activeProviders.map((provider) => provider.search(params)));
+  const providerRuns = activeProviders.flatMap((provider) =>
+    searchQueries.map((searchQuery) => ({
+      provider,
+      searchQuery,
+      promise: provider.search(params, {
+        searchTerm: searchQuery.term,
+        searchQuery: searchQuery.text,
+        maxResults: provider.name === "google-maps" ? 4 : 6
+      })
+    }))
+  );
+
+  const settled = await Promise.allSettled(providerRuns.map((run) => run.promise));
 
   const results: RawCompany[] = [];
-  const providerNames: string[] = [];
+  const providerNames = new Set<string>();
 
   settled.forEach((entry, index) => {
-    const provider = activeProviders[index];
+    const { provider } = providerRuns[index];
 
     if (entry.status === "fulfilled") {
-      providerNames.push(provider.name);
+      providerNames.add(provider.name);
       results.push(...entry.value);
       return;
     }
@@ -25,7 +37,7 @@ export async function searchCompanies(params: SearchRequest) {
   });
 
   return {
-    providers: providerNames,
+    providers: Array.from(providerNames),
     results
   };
 }

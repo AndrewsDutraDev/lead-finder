@@ -1,4 +1,5 @@
 import { CompanyCard } from "@/components/company-card";
+import { CompanyRelevanceBadge } from "@/components/company-relevance-badge";
 import { CompanyScoreBadge } from "@/components/company-score-badge";
 import { formatEmailDisplay, formatPhoneDisplay, formatWebsiteDisplay } from "@/lib/formatters";
 import type { Company } from "@/types/company";
@@ -16,7 +17,9 @@ export function CompaniesTable({ companies }: CompaniesTableProps) {
             <tr className="text-xs uppercase tracking-[0.18em] text-ink-500">
               <th className="px-5 py-4 font-medium">Empresa</th>
               <th className="px-5 py-4 font-medium">Fonte</th>
+              <th className="px-5 py-4 font-medium">Aderência</th>
               <th className="px-5 py-4 font-medium">Score</th>
+              <th className="px-5 py-4 font-medium">Categoria</th>
               <th className="px-5 py-4 font-medium">Site</th>
               <th className="px-5 py-4 font-medium">Telefone</th>
               <th className="px-5 py-4 font-medium">Email</th>
@@ -39,8 +42,12 @@ export function CompaniesTable({ companies }: CompaniesTableProps) {
                   </span>
                 </td>
                 <td className="px-5 py-4">
+                  <CompanyRelevanceBadge score={company.nicheRelevanceScore} />
+                </td>
+                <td className="px-5 py-4">
                   <CompanyScoreBadge score={company.score} />
                 </td>
+                <td className="px-5 py-4">{company.category ?? "Não informado"}</td>
                 <td className="px-5 py-4">
                   {company.websiteUrl ? (
                     <a className="break-all text-mint-600 underline-offset-4 hover:underline" href={company.websiteUrl} target="_blank" rel="noreferrer">

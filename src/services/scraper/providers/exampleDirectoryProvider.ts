@@ -10,6 +10,8 @@ const MAX_COMPANIES = 12;
 
 type DetailSnapshot = {
   name: string | null;
+  category: string | null;
+  description: string | null;
   phone: string | null;
   websiteUrl: string | null;
   email: string | null;
@@ -114,6 +116,9 @@ async function scrapeDetails(page: Page) {
             )
         : [];
 
+    const activityStart = lines.findIndex((line) => /Ramos de atividade/i.test(line));
+    const category = activityStart >= 0 ? lines[activityStart + 1] ?? null : null;
+    const description = lines.slice(0, 40).join(" | ") || null;
     const title = document.querySelector("h1")?.textContent?.trim() ?? null;
     const subtitleLine = lines.find((line) => /^[\p{L}\s.'-]+,\s?[A-Z]{2}$/u.test(line)) ?? null;
     const stateMatch = subtitleLine?.match(/,\s?([A-Z]{2})$/);
@@ -121,6 +126,8 @@ async function scrapeDetails(page: Page) {
 
     return {
       name: title,
+      category,
+      description,
       phone: phoneMatch?.[0] ?? null,
       websiteUrl: null,
       email: getEmail(),
@@ -164,7 +171,7 @@ export class ExampleDirectoryProvider implements ScraperProvider {
       await page.goto(SEARCH_URL, { waitUntil: "domcontentloaded" });
       await dismissCookies(page);
       await ensureSearchForm(page);
-      await page.locator('input[name="q"]').fill(params.niche);
+      await page.locator('input[name="q"]').fill(context.searchTerm ?? params.niche);
       await delay(300);
 
       const locationInput = page.locator('input[name="l"]');
@@ -189,6 +196,9 @@ export class ExampleDirectoryProvider implements ScraperProvider {
             source: this.name,
             name: snapshot.name,
             niche: params.niche,
+            category: snapshot.category,
+            description: snapshot.description,
+            matchedSearchTerm: context.searchTerm ?? null,
             websiteUrl: snapshot.websiteUrl,
             phone: snapshot.phone,
             email: snapshot.email,

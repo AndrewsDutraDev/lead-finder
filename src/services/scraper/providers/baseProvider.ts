@@ -4,6 +4,8 @@ export type ProviderContext = {
   headless?: boolean;
   maxResults?: number;
   timeoutMs?: number;
+  searchTerm?: string;
+  searchQuery?: string;
 };
 
 export interface ScraperProvider {

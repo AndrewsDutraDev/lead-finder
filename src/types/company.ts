@@ -5,10 +5,24 @@ export type SearchRequest = {
   city?: string | null;
 };
 
+export type ExpandedNiche = {
+  original: string;
+  normalized: string;
+  terms: string[];
+};
+
+export type GeneratedSearchQuery = {
+  term: string;
+  text: string;
+};
+
 export type RawCompany = {
   source: string;
   name: string | null;
   niche: string | null;
+  category?: string | null;
+  description?: string | null;
+  matchedSearchTerm?: string | null;
   websiteUrl: string | null;
   phone: string | null;
   email: string | null;
@@ -22,6 +36,10 @@ export type Company = {
   id: string;
   name: string;
   niche: string;
+  category: string | null;
+  description: string | null;
+  matchedSearchTerm: string | null;
+  nicheRelevanceScore: number;
   score: number;
   hasWebsite: boolean;
   websiteUrl: string | null;
@@ -40,6 +58,8 @@ export type SearchResponse = {
     total: number;
     durationMs: number;
     providers: string[];
+    expandedTerms?: string[];
+    searchQueries?: string[];
     query: SearchRequest;
   };
 };

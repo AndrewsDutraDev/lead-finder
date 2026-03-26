@@ -24,6 +24,8 @@ export async function POST(request: Request) {
         total: data.results.length,
         durationMs: Date.now() - startedAt,
         providers: data.providers,
+        expandedTerms: data.expandedTerms,
+        searchQueries: data.searchQueries,
         query: parsed
       }
     });

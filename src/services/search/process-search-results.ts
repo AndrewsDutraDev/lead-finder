@@ -1,20 +1,26 @@
 import type { SearchRequest } from "@/types/company";
+import { buildSearchQueries } from "@/services/niche/buildSearchQueries";
+import { expandNiche } from "@/services/niche/expandNiche";
 import { normalizeCompany } from "@/services/normalizer/normalize-company";
 import { dedupeResults } from "@/services/normalizer/dedupe-results";
 import { applyCompanyScore } from "@/services/scoring/apply-company-score";
 import { searchCompanies } from "@/services/scraper/searchCompanies";
 
 export async function processSearchResults(query: SearchRequest) {
-  const scrapeOutput = await searchCompanies(query);
+  const expandedNiche = expandNiche(query.niche);
+  const searchQueries = buildSearchQueries(query, expandedNiche);
+  const scrapeOutput = await searchCompanies(query, searchQueries);
   const normalized = scrapeOutput.results
     .map((company) => normalizeCompany(company, query))
     .filter((company): company is NonNullable<typeof company> => Boolean(company));
 
   const deduped = dedupeResults(normalized);
-  const scored = applyCompanyScore(deduped);
+  const scored = applyCompanyScore(deduped, expandedNiche);
 
   return {
     providers: scrapeOutput.providers,
+    expandedTerms: expandedNiche.terms,
+    searchQueries: searchQueries.map((item) => item.text),
     results: scored
   };
 }

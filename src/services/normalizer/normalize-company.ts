@@ -14,6 +14,9 @@ export function normalizeCompany(rawCompany: RawCompany, query: SearchRequest): 
   const state = cleanText(rawCompany.state) ?? cleanText(query.state) ?? null;
   const country = cleanText(rawCompany.country) ?? "Brasil";
   const niche = cleanText(rawCompany.niche) ?? query.niche;
+  const category = cleanText(rawCompany.category);
+  const description = cleanText(rawCompany.description);
+  const matchedSearchTerm = cleanText(rawCompany.matchedSearchTerm);
   const websiteUrl = normalizeUrl(rawCompany.websiteUrl);
   const phone = normalizePhone(rawCompany.phone);
   const email = normalizeEmail(rawCompany.email);
@@ -23,6 +26,10 @@ export function normalizeCompany(rawCompany: RawCompany, query: SearchRequest): 
     id: createCompanyId(name, city, phone, websiteUrl),
     name,
     niche,
+    category,
+    description,
+    matchedSearchTerm,
+    nicheRelevanceScore: 0,
     score: 0,
     hasWebsite: Boolean(websiteUrl),
     websiteUrl,

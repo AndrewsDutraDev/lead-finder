@@ -10,6 +10,8 @@ const DEFAULT_MAX_RESULTS = 8;
 
 type GoogleMapsSnapshot = {
   name: string | null;
+  category: string | null;
+  description: string | null;
   websiteUrl: string | null;
   phone: string | null;
   address: string | null;
@@ -17,8 +19,8 @@ type GoogleMapsSnapshot = {
   state: string | null;
 };
 
-function buildGoogleMapsQuery(params: SearchRequest) {
-  return [params.niche, buildLocationLabel(params), BRAZIL_COUNTRY_LABEL].filter(Boolean).join(" ");
+function buildGoogleMapsQuery(params: SearchRequest, searchTerm?: string) {
+  return [searchTerm ?? params.niche, buildLocationLabel(params), BRAZIL_COUNTRY_LABEL].filter(Boolean).join(" ");
 }
 
 async function dismissConsent(page: Page) {
@@ -73,11 +75,29 @@ async function scrapePlaceDetails(page: Page): Promise<GoogleMapsSnapshot> {
   await page.waitForLoadState("domcontentloaded");
   await delay(1800);
 
-  const name = (await page.locator("h1").first().textContent().catch(() => null))?.trim() ?? null;
+  const contextSnapshot = await page.evaluate(() => {
+    const text = document.body.innerText.replace(/\r/g, "");
+    const lines = text
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const name = document.querySelector("h1")?.textContent?.trim() ?? null;
+    const titleIndex = name ? lines.findIndex((line) => line === name) : -1;
+    const nearbyLines = titleIndex >= 0 ? lines.slice(titleIndex + 1, titleIndex + 10) : [];
+    const categoryLine =
+      nearbyLines.find((line) => line.includes("·") && !/Visão geral|Sobre|Rotas|Salvar|Compartilhar/i.test(line)) ??
+      null;
+
+    return {
+      name,
+      category: categoryLine ? categoryLine.split("·")[0].trim() : null,
+      description: nearbyLines.slice(0, 4).join(" | ") || null
+    };
+  });
 
   const address =
     (await page.locator('button[data-item-id="address"]').first().getAttribute("aria-label").catch(() => null))
-      ?.replace(/^Endereço:\s*/i, "")
+      ?.replace(/^Endere.c?o:\s*/i, "")
       .trim() ?? null;
 
   const phone =
@@ -91,7 +111,9 @@ async function scrapePlaceDetails(page: Page): Promise<GoogleMapsSnapshot> {
   const parsedLocation = parseCityAndState(address);
 
   return {
-    name,
+    name: contextSnapshot.name,
+    category: contextSnapshot.category,
+    description: contextSnapshot.description,
     websiteUrl,
     phone,
     address,
@@ -125,7 +147,9 @@ export class GoogleMapsProvider implements ScraperProvider {
       const page = await browserContext.newPage();
       page.setDefaultTimeout(context.timeoutMs ?? 15000);
 
-      const searchUrl = `${GOOGLE_MAPS_BASE_URL}${encodeURIComponent(buildGoogleMapsQuery(params))}`;
+      const searchUrl = `${GOOGLE_MAPS_BASE_URL}${encodeURIComponent(
+        buildGoogleMapsQuery(params, context.searchTerm)
+      )}`;
 
       await page.goto(searchUrl, { waitUntil: "domcontentloaded" });
       await dismissConsent(page);
@@ -145,6 +169,9 @@ export class GoogleMapsProvider implements ScraperProvider {
             source: this.name,
             name: snapshot.name,
             niche: params.niche,
+            category: snapshot.category,
+            description: snapshot.description,
+            matchedSearchTerm: context.searchTerm ?? null,
             websiteUrl: snapshot.websiteUrl,
             phone: snapshot.phone,
             email: null,
