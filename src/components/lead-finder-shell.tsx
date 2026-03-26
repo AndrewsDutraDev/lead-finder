@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { LoadingState } from "@/components/loading-state";
 import { ResultsToolbar } from "@/components/results-toolbar";
+import { ScoreExplanation } from "@/components/score-explanation";
 import { SearchFilters } from "@/components/search-filters";
 import { companiesToCsv } from "@/lib/csv";
 import { searchLeads } from "@/lib/search-api";
@@ -85,6 +86,8 @@ export function LeadFinderShell() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-8 px-4 py-6 md:px-8 md:py-10">
       <AppHeader />
+
+      <ScoreExplanation />
 
       <SearchFilters value={filters} isLoading={isPending} onChange={setFilters} onSubmit={handleSearch} onReset={handleReset} />
 
