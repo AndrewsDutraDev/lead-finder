@@ -1,5 +1,4 @@
 import { CompanyCard } from "@/components/company-card";
-import { CompanyRelevanceBadge } from "@/components/company-relevance-badge";
 import { CompanyScoreBadge } from "@/components/company-score-badge";
 import { formatEmailDisplay, formatPhoneDisplay, formatWebsiteDisplay } from "@/lib/formatters";
 import type { Company } from "@/types/company";
@@ -16,8 +15,6 @@ export function CompaniesTable({ companies }: CompaniesTableProps) {
           <thead className="bg-ink-50/80">
             <tr className="text-xs uppercase tracking-[0.18em] text-ink-500">
               <th className="px-5 py-4 font-medium">Empresa</th>
-              <th className="px-5 py-4 font-medium">Fonte</th>
-              <th className="px-5 py-4 font-medium">Aderência</th>
               <th className="px-5 py-4 font-medium">Score</th>
               <th className="px-5 py-4 font-medium">Categoria</th>
               <th className="px-5 py-4 font-medium">Site</th>
@@ -35,14 +32,6 @@ export function CompaniesTable({ companies }: CompaniesTableProps) {
                     <p className="font-semibold text-ink-900">{company.name}</p>
                     <p className="mt-1 text-xs text-ink-400">{company.niche}</p>
                   </div>
-                </td>
-                <td className="px-5 py-4">
-                  <span className="rounded-full bg-ink-50 px-3 py-1 text-xs font-medium text-ink-600">
-                    {company.source}
-                  </span>
-                </td>
-                <td className="px-5 py-4">
-                  <CompanyRelevanceBadge score={company.nicheRelevanceScore} />
                 </td>
                 <td className="px-5 py-4">
                   <CompanyScoreBadge score={company.score} />

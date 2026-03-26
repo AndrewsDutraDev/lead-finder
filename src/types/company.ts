@@ -39,7 +39,6 @@ export type Company = {
   category: string | null;
   description: string | null;
   matchedSearchTerm: string | null;
-  nicheRelevanceScore: number;
   score: number;
   hasWebsite: boolean;
   websiteUrl: string | null;
@@ -49,6 +48,10 @@ export type Company = {
   city: string | null;
   state: string | null;
   country: string;
+};
+
+export type InternalCompany = Company & {
+  nicheRelevanceScore: number;
   source: string;
 };
 

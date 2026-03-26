@@ -1,4 +1,3 @@
-import { CompanyRelevanceBadge } from "@/components/company-relevance-badge";
 import { CompanyScoreBadge } from "@/components/company-score-badge";
 import { formatEmailDisplay, formatPhoneDisplay, formatWebsiteDisplay } from "@/lib/formatters";
 import type { Company } from "@/types/company";
@@ -17,12 +16,8 @@ export function CompanyCard({ company }: CompanyCardProps) {
             {company.city ?? "Cidade não informada"}
             {company.state ? `, ${company.state}` : ""}
           </p>
-          <p className="mt-2 text-xs uppercase tracking-[0.18em] text-ink-400">{company.source}</p>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <CompanyRelevanceBadge score={company.nicheRelevanceScore} />
-          <CompanyScoreBadge score={company.score} />
-        </div>
+        <CompanyScoreBadge score={company.score} />
       </div>
 
       <dl className="mt-4 grid gap-3 text-sm">

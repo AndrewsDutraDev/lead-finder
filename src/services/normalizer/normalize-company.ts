@@ -1,4 +1,4 @@
-import type { Company, RawCompany, SearchRequest } from "@/types/company";
+import type { InternalCompany, RawCompany, SearchRequest } from "@/types/company";
 import { cleanText } from "@/services/normalizer/clean-text";
 import { normalizeAddress } from "@/services/normalizer/normalize-address";
 import { normalizeEmail } from "@/services/normalizer/normalize-email";
@@ -6,7 +6,7 @@ import { normalizePhone } from "@/services/normalizer/normalize-phone";
 import { normalizeUrl } from "@/services/normalizer/normalize-url";
 import { createCompanyId } from "@/services/normalizer/utils";
 
-export function normalizeCompany(rawCompany: RawCompany, query: SearchRequest): Company | null {
+export function normalizeCompany(rawCompany: RawCompany, query: SearchRequest): InternalCompany | null {
   const name = cleanText(rawCompany.name);
   if (!name) return null;
 

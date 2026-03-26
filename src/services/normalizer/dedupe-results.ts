@@ -1,7 +1,7 @@
-import type { Company } from "@/types/company";
+import type { InternalCompany } from "@/types/company";
 import { slugify } from "@/services/normalizer/utils";
 
-function dedupeKey(company: Company) {
+function dedupeKey(company: InternalCompany) {
   const normalizedName = slugify(company.name);
   const normalizedCity = slugify(company.city ?? "");
   const normalizedPhone = company.phone?.replace(/\D/g, "") ?? "";
@@ -23,7 +23,7 @@ function pickPreferredValue(current: string | null, incoming: string | null) {
   return incoming.length > current.length ? incoming : current;
 }
 
-function mergeCompanies(current: Company, incoming: Company): Company {
+function mergeCompanies(current: InternalCompany, incoming: InternalCompany): InternalCompany {
   const mergedWebsite = current.websiteUrl ?? incoming.websiteUrl;
   const mergedSource = Array.from(
     new Set(
@@ -52,9 +52,9 @@ function mergeCompanies(current: Company, incoming: Company): Company {
   };
 }
 
-export function dedupeResults(companies: Company[]) {
-  const mergedResults: Company[] = [];
-  const lookup = new Map<string, Company>();
+export function dedupeResults(companies: InternalCompany[]) {
+  const mergedResults: InternalCompany[] = [];
+  const lookup = new Map<string, InternalCompany>();
 
   companies.forEach((company) => {
     const keys = dedupeKey(company);

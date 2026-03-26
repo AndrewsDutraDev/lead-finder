@@ -26,9 +26,7 @@ export function ResultsToolbar({
         <p className="text-sm uppercase tracking-[0.2em] text-ink-400">Resultados</p>
         <div className="mt-1 flex items-center gap-3">
           <h3 className="text-2xl font-semibold text-ink-900">{total}</h3>
-          <span className="rounded-full bg-ink-50 px-3 py-1 text-xs font-medium text-ink-500">
-            Ordenado por aderência + score
-          </span>
+          <span className="rounded-full bg-ink-50 px-3 py-1 text-xs font-medium text-ink-500">Ordenado por score</span>
         </div>
       </div>
 

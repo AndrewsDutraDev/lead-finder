@@ -1,9 +1,8 @@
-import type { Company } from "@/types/company";
+import type { ExpandedNiche, InternalCompany } from "@/types/company";
 import { calculateCompanyScore } from "@/services/scoring/calculate-company-score";
 import { calculateNicheRelevance } from "@/services/scoring/calculate-niche-relevance";
-import type { ExpandedNiche } from "@/types/company";
 
-export function applyCompanyScore(companies: Company[], expandedNiche: ExpandedNiche) {
+export function applyCompanyScore(companies: InternalCompany[], expandedNiche: ExpandedNiche) {
   return companies
     .map((company) => ({
       ...company,
