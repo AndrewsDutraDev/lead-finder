@@ -51,7 +51,6 @@ export type Company = {
 };
 
 export type InternalCompany = Company & {
-  nicheRelevanceScore: number;
   source: string;
 };
 

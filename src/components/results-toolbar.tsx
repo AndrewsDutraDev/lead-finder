@@ -4,8 +4,10 @@ type ResultsToolbarProps = {
   total: number;
   onlyWithWebsite: boolean;
   onlyWithEmail: boolean;
+  onlyWithPhone: boolean;
   onToggleWebsite: () => void;
   onToggleEmail: () => void;
+  onTogglePhone: () => void;
   onExportCsv: () => void;
 };
 
@@ -13,8 +15,10 @@ export function ResultsToolbar({
   total,
   onlyWithWebsite,
   onlyWithEmail,
+  onlyWithPhone,
   onToggleWebsite,
   onToggleEmail,
+  onTogglePhone,
   onExportCsv
 }: ResultsToolbarProps) {
   const pillClassName =
@@ -44,6 +48,13 @@ export function ResultsToolbar({
           className={`${pillClassName} ${onlyWithEmail ? "border-mint-500 bg-mint-100 text-mint-600" : "border-ink-200 bg-white text-ink-700 hover:bg-ink-50"}`}
         >
           Apenas com email
+        </button>
+        <button
+          type="button"
+          onClick={onTogglePhone}
+          className={`${pillClassName} ${onlyWithPhone ? "border-mint-500 bg-mint-100 text-mint-600" : "border-ink-200 bg-white text-ink-700 hover:bg-ink-50"}`}
+        >
+          Apenas com telefone
         </button>
         <ExportCsvButton disabled={total === 0} onClick={onExportCsv} />
       </div>

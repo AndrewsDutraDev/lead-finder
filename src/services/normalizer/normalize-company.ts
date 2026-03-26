@@ -29,7 +29,6 @@ export function normalizeCompany(rawCompany: RawCompany, query: SearchRequest): 
     category,
     description,
     matchedSearchTerm,
-    nicheRelevanceScore: 0,
     score: 0,
     hasWebsite: Boolean(websiteUrl),
     websiteUrl,

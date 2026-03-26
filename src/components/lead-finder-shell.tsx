@@ -27,15 +27,17 @@ export function LeadFinderShell() {
   const [hasSearched, setHasSearched] = useState(false);
   const [onlyWithWebsite, setOnlyWithWebsite] = useState(false);
   const [onlyWithEmail, setOnlyWithEmail] = useState(false);
+  const [onlyWithPhone, setOnlyWithPhone] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const visibleResults = useMemo(() => {
     return results.filter((company) => {
       if (onlyWithWebsite && !company.websiteUrl) return false;
       if (onlyWithEmail && !company.email) return false;
+      if (onlyWithPhone && !company.phone) return false;
       return true;
     });
-  }, [onlyWithEmail, onlyWithWebsite, results]);
+  }, [onlyWithEmail, onlyWithPhone, onlyWithWebsite, results]);
 
   function handleReset() {
     setFilters(initialFilters);
@@ -43,6 +45,7 @@ export function LeadFinderShell() {
     setError(null);
     setHasSearched(false);
     setOnlyWithEmail(false);
+    setOnlyWithPhone(false);
     setOnlyWithWebsite(false);
   }
 
@@ -96,8 +99,10 @@ export function LeadFinderShell() {
           total={visibleResults.length}
           onlyWithWebsite={onlyWithWebsite}
           onlyWithEmail={onlyWithEmail}
+          onlyWithPhone={onlyWithPhone}
           onToggleWebsite={() => setOnlyWithWebsite((value) => !value)}
           onToggleEmail={() => setOnlyWithEmail((value) => !value)}
+          onTogglePhone={() => setOnlyWithPhone((value) => !value)}
           onExportCsv={handleExportCsv}
         />
       ) : null}

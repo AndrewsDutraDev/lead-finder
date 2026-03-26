@@ -16,9 +16,9 @@ export async function processSearchResults(query: SearchRequest) {
     .filter((company): company is NonNullable<typeof company> => Boolean(company));
 
   const deduped = dedupeResults(normalized);
-  const scored = applyCompanyScore(deduped, expandedNiche)
+  const scored = applyCompanyScore(deduped)
     .slice(0, MAX_RETURNED_RESULTS)
-    .map(({ nicheRelevanceScore: _nicheRelevanceScore, source: _source, ...company }) => company);
+    .map(({ source: _source, ...company }) => company);
 
   return {
     providers: scrapeOutput.providers,

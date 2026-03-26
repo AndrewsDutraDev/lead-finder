@@ -22,7 +22,11 @@ type GoogleMapsSnapshot = {
 };
 
 function buildGoogleMapsQuery(params: SearchRequest, searchTerm?: string) {
-  return [searchTerm ?? params.niche, buildLocationLabel(params), BRAZIL_COUNTRY_LABEL].filter(Boolean).join(" ");
+  const parts = [searchTerm ?? params.niche, buildLocationLabel(params), BRAZIL_COUNTRY_LABEL]
+    .filter(Boolean)
+    .filter((part, index, items) => items.findIndex((candidate) => candidate.toLowerCase() === part.toLowerCase()) === index);
+
+  return parts.join(" ");
 }
 
 async function dismissConsent(page: Page) {
