@@ -1,40 +1,30 @@
 import type { GeneratedSearchQuery, RawCompany, SearchRequest } from "@/types/company";
-import { ExampleDirectoryProvider } from "@/services/scraper/providers/exampleDirectoryProvider";
 import { GoogleMapsProvider } from "@/services/scraper/providers/googleMapsProvider";
 import type { ScraperProvider } from "@/services/scraper/providers/baseProvider";
 
-const providers: ScraperProvider[] = [new GoogleMapsProvider(), new ExampleDirectoryProvider()];
+const providers: ScraperProvider[] = [new GoogleMapsProvider()];
 
 export async function searchCompanies(params: SearchRequest, searchQueries: GeneratedSearchQuery[]) {
   const activeProviders = providers.filter((provider) => provider.supports(params));
-  const providerRuns = activeProviders.flatMap((provider) =>
-    searchQueries.map((searchQuery) => ({
-      provider,
-      searchQuery,
-      promise: provider.search(params, {
-        searchTerm: searchQuery.term,
-        searchQuery: searchQuery.text,
-        maxResults: provider.name === "google-maps" ? 4 : 6
-      })
-    }))
-  );
-
-  const settled = await Promise.allSettled(providerRuns.map((run) => run.promise));
-
   const results: RawCompany[] = [];
   const providerNames = new Set<string>();
 
-  settled.forEach((entry, index) => {
-    const { provider } = providerRuns[index];
+  for (const provider of activeProviders) {
+    try {
+      const providerResults = await provider.search(params, {
+        searchTerms: searchQueries.map((query) => query.term),
+        maxResults: 100,
+        timeoutMs: 15000
+      });
 
-    if (entry.status === "fulfilled") {
-      providerNames.add(provider.name);
-      results.push(...entry.value);
-      return;
+      if (providerResults.length > 0) {
+        providerNames.add(provider.name);
+        results.push(...providerResults);
+      }
+    } catch (error) {
+      console.error(`[scraper] provider ${provider.name} failed`, error);
     }
-
-    console.error(`[scraper] provider ${provider.name} failed`, entry.reason);
-  });
+  }
 
   return {
     providers: Array.from(providerNames),

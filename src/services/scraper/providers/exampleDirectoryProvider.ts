@@ -6,7 +6,7 @@ import { buildLocationLabel } from "@/services/scraper/utils/query";
 import { BRAZIL_COUNTRY_CODE } from "@/lib/constants";
 
 const SEARCH_URL = "https://paginaamarela.com.br/";
-const MAX_COMPANIES = 12;
+const MAX_COMPANIES = 24;
 
 type DetailSnapshot = {
   name: string | null;
@@ -29,14 +29,42 @@ async function dismissCookies(page: Page) {
 }
 
 async function collectCompanyLinks(page: Page, maxResults: number) {
-  await page.waitForLoadState("domcontentloaded");
-  await page.waitForTimeout(800);
+  const seen = new Set<string>();
 
-  const hrefs = await page.$$eval('a[href*="/empresa/"]', (anchors) =>
-    Array.from(new Set(anchors.map((anchor) => (anchor as HTMLAnchorElement).href))).filter(Boolean)
-  );
+  for (let attempt = 0; attempt < 8 && seen.size < maxResults; attempt += 1) {
+    await page.waitForLoadState("domcontentloaded");
+    await page.waitForTimeout(900);
 
-  return hrefs.slice(0, maxResults);
+    const hrefs = await page.$$eval('a[href*="/empresa/"]', (anchors) =>
+      Array.from(new Set(anchors.map((anchor) => (anchor as HTMLAnchorElement).href))).filter(Boolean)
+    );
+
+    hrefs.forEach((href) => seen.add(href));
+    if (seen.size >= maxResults) {
+      break;
+    }
+
+    const nextHref = await page
+      .evaluate(() => {
+        const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href]'));
+        return (
+          links.find((link) =>
+            /pr[oó]xima|avancar|seguir|next/i.test((link.textContent || "").trim()) ||
+            link.getAttribute("rel") === "next"
+          )?.href ?? null
+        );
+      })
+      .catch(() => null);
+
+    if (!nextHref || nextHref === page.url()) {
+      break;
+    }
+
+    await page.goto(nextHref, { waitUntil: "domcontentloaded" });
+    await delay(900);
+  }
+
+  return Array.from(seen).slice(0, maxResults);
 }
 
 async function ensureSearchForm(page: Page) {

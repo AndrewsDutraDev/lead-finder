@@ -7,6 +7,7 @@ import { applyCompanyScore } from "@/services/scoring/apply-company-score";
 import { searchCompanies } from "@/services/scraper/searchCompanies";
 
 export async function processSearchResults(query: SearchRequest) {
+  const MAX_RETURNED_RESULTS = 100;
   const expandedNiche = expandNiche(query.niche);
   const searchQueries = buildSearchQueries(query, expandedNiche);
   const scrapeOutput = await searchCompanies(query, searchQueries);
@@ -15,7 +16,7 @@ export async function processSearchResults(query: SearchRequest) {
     .filter((company): company is NonNullable<typeof company> => Boolean(company));
 
   const deduped = dedupeResults(normalized);
-  const scored = applyCompanyScore(deduped, expandedNiche);
+  const scored = applyCompanyScore(deduped, expandedNiche).slice(0, MAX_RETURNED_RESULTS);
 
   return {
     providers: scrapeOutput.providers,

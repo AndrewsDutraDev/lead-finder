@@ -5,6 +5,7 @@ export type ProviderContext = {
   maxResults?: number;
   timeoutMs?: number;
   searchTerm?: string;
+  searchTerms?: string[];
   searchQuery?: string;
 };
 
