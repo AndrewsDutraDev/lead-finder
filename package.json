@@ -13,6 +13,7 @@
     "playwright": "1.53.1",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+    "ts-interface-checker": "0.1.13",
     "zod": "3.24.2"
   },
   "devDependencies": {

@@ -30,7 +30,8 @@ export async function POST(request: Request) {
         providers: data.providers,
         expandedTerms: data.expandedTerms,
         searchQueries: data.searchQueries,
-        query: parsed
+        query: parsed,
+        diagnostics: data.diagnostics
       }
     });
   } catch (error) {

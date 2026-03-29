@@ -11,7 +11,7 @@ import { ScoreExplanation } from "@/components/score-explanation";
 import { SearchFilters } from "@/components/search-filters";
 import { companiesToCsv } from "@/lib/csv";
 import { searchLeads } from "@/lib/search-api";
-import type { Company, SearchRequest } from "@/types/company";
+import type { Company, SearchRequest, SearchResponse } from "@/types/company";
 
 const initialFilters: SearchRequest = {
   niche: "",
@@ -23,6 +23,7 @@ const initialFilters: SearchRequest = {
 export function LeadFinderShell() {
   const [filters, setFilters] = useState<SearchRequest>(initialFilters);
   const [results, setResults] = useState<Company[]>([]);
+  const [meta, setMeta] = useState<SearchResponse["meta"] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [onlyWithWebsite, setOnlyWithWebsite] = useState(false);
@@ -42,6 +43,7 @@ export function LeadFinderShell() {
   function handleReset() {
     setFilters(initialFilters);
     setResults([]);
+    setMeta(null);
     setError(null);
     setHasSearched(false);
     setOnlyWithEmail(false);
@@ -79,8 +81,10 @@ export function LeadFinderShell() {
         });
 
         setResults(response.results);
+        setMeta(response.meta);
       } catch (searchError) {
         setResults([]);
+        setMeta(null);
         setError(searchError instanceof Error ? searchError.message : "Falha ao buscar resultados.");
       }
     });
@@ -110,7 +114,9 @@ export function LeadFinderShell() {
       {isPending ? <LoadingState /> : null}
       {!isPending && error ? <ErrorState message={error} /> : null}
       {!isPending && !error && results.length > 0 ? <CompaniesTable companies={visibleResults} /> : null}
-      {!isPending && !error && results.length === 0 ? <EmptyState hasSearched={hasSearched} /> : null}
+      {!isPending && !error && results.length === 0 ? (
+        <EmptyState hasSearched={hasSearched} diagnostics={meta?.diagnostics} />
+      ) : null}
     </main>
   );
 }

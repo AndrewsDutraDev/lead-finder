@@ -54,6 +54,21 @@ export type InternalCompany = Company & {
   source: string;
 };
 
+export type ProviderDiagnostic = {
+  provider: string;
+  resultCount: number;
+  error: string | null;
+};
+
+export type SearchDiagnostics = {
+  activeProviders: string[];
+  providerDiagnostics: ProviderDiagnostic[];
+  rawResultCount: number;
+  normalizedCount: number;
+  dedupedCount: number;
+  scoredCount: number;
+};
+
 export type SearchResponse = {
   results: Company[];
   meta: {
@@ -63,5 +78,6 @@ export type SearchResponse = {
     expandedTerms?: string[];
     searchQueries?: string[];
     query: SearchRequest;
+    diagnostics?: SearchDiagnostics;
   };
 };

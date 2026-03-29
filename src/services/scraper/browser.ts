@@ -51,6 +51,12 @@ export async function createBrowserSession(headless = true): Promise<BrowserSess
   const browserlessWSEndpoint = buildBrowserlessWSEndpoint();
 
   if (browserlessWSEndpoint) {
+    const endpoint = new URL(browserlessWSEndpoint);
+    console.info("[browser] using browserless", {
+      host: endpoint.host,
+      protocol: endpoint.protocol
+    });
+
     const browser = await chromium.connect(browserlessWSEndpoint);
 
     return {
@@ -61,6 +67,10 @@ export async function createBrowserSession(headless = true): Promise<BrowserSess
       }
     };
   }
+
+  console.info("[browser] using local chromium fallback", {
+    headless
+  });
 
   const browser = await chromium.launch({ headless });
 

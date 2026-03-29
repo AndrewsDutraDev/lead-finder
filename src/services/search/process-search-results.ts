@@ -24,6 +24,14 @@ export async function processSearchResults(query: SearchRequest) {
     providers: scrapeOutput.providers,
     expandedTerms: expandedNiche.terms,
     searchQueries: searchQueries.map((item) => item.text),
-    results: scored
+    results: scored,
+    diagnostics: {
+      activeProviders: scrapeOutput.activeProviders,
+      providerDiagnostics: scrapeOutput.providerDiagnostics,
+      rawResultCount: scrapeOutput.results.length,
+      normalizedCount: normalized.length,
+      dedupedCount: deduped.length,
+      scoredCount: scored.length
+    }
   };
 }
