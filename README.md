@@ -1,6 +1,6 @@
 # Local Lead Finder
 
-Aplicação full stack em `Next.js + React + TypeScript` para buscar empresas por nicho e localização no Brasil com scraping server-side usando Playwright.
+Aplicação full stack em `Next.js + React + TypeScript` para buscar empresas por nicho e localização no Brasil com scraping server-side usando Playwright local ou Browserless remoto.
 
 ## Scripts
 
@@ -8,6 +8,31 @@ Aplicação full stack em `Next.js + React + TypeScript` para buscar empresas po
 npm install
 npm run dev
 ```
+
+## Variáveis de ambiente
+
+Crie um arquivo `.env.local`:
+
+```bash
+# Opcional no ambiente local. Se definido, usa Browserless em vez do Chromium local.
+BROWSERLESS_TOKEN=
+
+# Opcional. Se omitido, usa wss://production-sfo.browserless.io
+BROWSERLESS_URL=
+
+# Opcional. Tem prioridade sobre as variáveis acima.
+# Exemplo: wss://production-sfo.browserless.io?token=seu-token
+BROWSERLESS_WS_ENDPOINT=
+```
+
+## Browserless na Vercel
+
+Na Vercel, configure:
+
+- `BROWSERLESS_TOKEN` com o token do Browserless
+- `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` para evitar download do Chromium no build
+
+Opcionalmente, defina `BROWSERLESS_URL` se sua conta usar outro endpoint ou outra região.
 
 ## Arquitetura
 
@@ -22,4 +47,5 @@ npm run dev
 - O scraping roda somente no backend.
 - Os resultados não são persistidos em banco.
 - A exportação CSV usa apenas os dados atuais da sessão.
-- Se o navegador do Playwright ainda não estiver instalado, execute `npx playwright install chromium`.
+- Em deploy na Vercel, o scraping usa Browserless quando `BROWSERLESS_TOKEN` ou `BROWSERLESS_WS_ENDPOINT` estiver definido.
+- Em ambiente local, sem Browserless configurado, execute `npx playwright install chromium` antes de usar o scraping.

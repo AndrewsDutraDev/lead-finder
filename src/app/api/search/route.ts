@@ -3,6 +3,10 @@ import { z } from "zod";
 import { processSearchResults } from "@/services/search/process-search-results";
 import { BRAZIL_COUNTRY_CODE } from "@/lib/constants";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
 const searchSchema = z.object({
   niche: z.string().trim().min(2, "Informe um nicho com pelo menos 2 caracteres."),
   country: z.literal(BRAZIL_COUNTRY_CODE),

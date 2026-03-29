@@ -1,9 +1,10 @@
-import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
+import type { Browser, BrowserContext, Page } from "playwright";
 import type { RawCompany, SearchRequest } from "@/types/company";
 import type { ProviderContext, ScraperProvider } from "./baseProvider";
 import { BRAZIL_COUNTRY_CODE, BRAZIL_COUNTRY_LABEL } from "@/lib/constants";
 import { buildLocationLabel } from "@/services/scraper/utils/query";
 import { delay } from "@/services/scraper/utils/delay";
+import { createBrowserSession } from "@/services/scraper/browser";
 
 const GOOGLE_MAPS_BASE_URL = "https://www.google.com/maps/search/";
 const DEFAULT_MAX_RESULTS = 100;
@@ -192,15 +193,9 @@ export class GoogleMapsProvider implements ScraperProvider {
     let browserContext: BrowserContext | null = null;
 
     try {
-      browser = await chromium.launch({
-        headless: context.headless ?? true
-      });
-
-      browserContext = await browser.newContext({
-        locale: "pt-BR",
-        userAgent:
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-      });
+      const session = await createBrowserSession(context.headless ?? true);
+      browser = session.browser;
+      browserContext = await browser.newContext(session.contextOptions);
 
       const page = await browserContext.newPage();
       page.setDefaultTimeout(context.timeoutMs ?? 15000);
@@ -232,37 +227,37 @@ export class GoogleMapsProvider implements ScraperProvider {
         DETAIL_CONCURRENCY,
         async ([link, searchTerm]) => {
           const detailPage = await browserContext!.newPage();
-        detailPage.setDefaultTimeout(context.timeoutMs ?? 15000);
+          detailPage.setDefaultTimeout(context.timeoutMs ?? 15000);
 
-        try {
-          await detailPage.goto(link, { waitUntil: "domcontentloaded" });
-          const snapshot = await scrapePlaceDetails(detailPage);
+          try {
+            await detailPage.goto(link, { waitUntil: "domcontentloaded" });
+            const snapshot = await scrapePlaceDetails(detailPage);
 
-          if (!snapshot.name) {
+            if (!snapshot.name) {
+              return null;
+            }
+
+            return {
+              source: this.name,
+              name: snapshot.name,
+              niche: params.niche,
+              category: snapshot.category,
+              description: snapshot.description,
+              matchedSearchTerm: searchTerm,
+              websiteUrl: snapshot.websiteUrl,
+              phone: snapshot.phone,
+              email: null,
+              address: snapshot.address,
+              city: snapshot.city ?? params.city ?? null,
+              state: snapshot.state ?? params.state ?? null,
+              country: BRAZIL_COUNTRY_LABEL
+            } satisfies RawCompany;
+          } catch (error) {
+            console.error(`[${this.name}] failed to extract place`, { link, error });
             return null;
+          } finally {
+            await detailPage.close().catch(() => null);
           }
-
-          return {
-            source: this.name,
-            name: snapshot.name,
-            niche: params.niche,
-            category: snapshot.category,
-            description: snapshot.description,
-            matchedSearchTerm: searchTerm,
-            websiteUrl: snapshot.websiteUrl,
-            phone: snapshot.phone,
-            email: null,
-            address: snapshot.address,
-            city: snapshot.city ?? params.city ?? null,
-            state: snapshot.state ?? params.state ?? null,
-            country: BRAZIL_COUNTRY_LABEL
-          } satisfies RawCompany;
-        } catch (error) {
-          console.error(`[${this.name}] failed to extract place`, { link, error });
-          return null;
-        } finally {
-          await detailPage.close().catch(() => null);
-        }
         }
       );
 
