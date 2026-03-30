@@ -1,15 +1,15 @@
-import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
+import type { Browser, BrowserContext, Page } from "playwright-core";
 import type { RawCompany, SearchRequest } from "@/types/company";
 import type { ProviderContext, ScraperProvider } from "./baseProvider";
 import { BRAZIL_COUNTRY_CODE, BRAZIL_COUNTRY_LABEL } from "@/lib/constants";
 import { buildLocationLabel } from "@/services/scraper/utils/query";
 import { delay } from "@/services/scraper/utils/delay";
+import { createBrowserSession, createManagedContext, createManagedPage } from "@/services/scraper/browser";
 
 const GOOGLE_MAPS_BASE_URL = "https://www.google.com/maps/search/";
-const DEFAULT_MAX_RESULTS = 100;
-const DEFAULT_RESULTS_PER_TERM = 18;
-const DETAIL_CONCURRENCY = 4;
-
+const DEFAULT_MAX_RESULTS = 40;
+const DEFAULT_RESULTS_PER_TERM = 8;
+const EARLY_RETURN_TARGET = 12;
 type GoogleMapsSnapshot = {
   name: string | null;
   category: string | null;
@@ -19,6 +19,12 @@ type GoogleMapsSnapshot = {
   address: string | null;
   city: string | null;
   state: string | null;
+};
+
+type BrowserRuntime = {
+  browser: Browser;
+  browserContext: BrowserContext;
+  page: Page;
 };
 
 function buildGoogleMapsQuery(params: SearchRequest, searchTerm?: string) {
@@ -86,6 +92,11 @@ async function collectPlaceLinks(page: Page, maxResults: number) {
 
 async function scrapePlaceLinksForTerm(page: Page, params: SearchRequest, searchTerm: string, maxResults: number) {
   const searchUrl = `${GOOGLE_MAPS_BASE_URL}${encodeURIComponent(buildGoogleMapsQuery(params, searchTerm))}`;
+  console.info("[google-maps] searching term", {
+    searchTerm,
+    searchUrl,
+    maxResults
+  });
   await page.goto(searchUrl, { waitUntil: "domcontentloaded" });
   await dismissConsent(page);
   await delay(1800);
@@ -160,26 +171,6 @@ async function scrapePlaceDetails(page: Page): Promise<GoogleMapsSnapshot> {
   };
 }
 
-async function mapWithConcurrency<TInput, TOutput>(
-  items: TInput[],
-  concurrency: number,
-  mapper: (item: TInput, index: number) => Promise<TOutput>
-) {
-  const results: TOutput[] = new Array(items.length);
-  let cursor = 0;
-
-  async function worker() {
-    while (cursor < items.length) {
-      const currentIndex = cursor;
-      cursor += 1;
-      results[currentIndex] = await mapper(items[currentIndex], currentIndex);
-    }
-  }
-
-  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
-  return results;
-}
-
 export class GoogleMapsProvider implements ScraperProvider {
   name = "google-maps";
 
@@ -188,91 +179,145 @@ export class GoogleMapsProvider implements ScraperProvider {
   }
 
   async search(params: SearchRequest, context: ProviderContext = {}) {
-    let browser: Browser | null = null;
-    let browserContext: BrowserContext | null = null;
+    let searchRuntime: BrowserRuntime | null = null;
+    let detailRuntime: BrowserRuntime | null = null;
+    const collectedResults: RawCompany[] = [];
+
+    const createRuntime = async () => {
+      const session = await createBrowserSession();
+      const browser = session.browser;
+      const browserContext = await createManagedContext(browser, session.contextOptions);
+      const page = await createManagedPage(browserContext);
+
+      page.setDefaultTimeout(context.timeoutMs ?? 15000);
+      page.setDefaultNavigationTimeout(context.timeoutMs ?? 15000);
+
+      browser.on("disconnected", () => {
+        console.error("[google-maps] browser disconnected unexpectedly");
+      });
+
+      return {
+        browser,
+        browserContext,
+        page
+      } satisfies BrowserRuntime;
+    };
+
+    const closeRuntime = async (runtime: BrowserRuntime | null) => {
+      await runtime?.page.close().catch(() => null);
+      await runtime?.browserContext.close().catch(() => null);
+      await runtime?.browser.close().catch(() => null);
+    };
 
     try {
-      browser = await chromium.launch({
-        headless: context.headless ?? true
-      });
-
-      browserContext = await browser.newContext({
-        locale: "pt-BR",
-        userAgent:
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-      });
-
-      const page = await browserContext.newPage();
-      page.setDefaultTimeout(context.timeoutMs ?? 15000);
-
-      const searchTerms = (context.searchTerms?.filter(Boolean) ?? [context.searchTerm ?? params.niche]).slice(0, 6);
+      const searchTerms = (context.searchTerms?.filter(Boolean) ?? [context.searchTerm ?? params.niche]).slice(0, 4);
       const maxResults = context.maxResults ?? DEFAULT_MAX_RESULTS;
-      const maxResultsPerTerm = Math.max(10, Math.min(DEFAULT_RESULTS_PER_TERM, maxResults));
-      const linkToTerm = new Map<string, string>();
+      const targetResults = Math.min(maxResults, EARLY_RETURN_TARGET);
+      const seenLinks = new Set<string>();
+
+      console.info("[google-maps] provider input", {
+        niche: params.niche,
+        country: params.country,
+        state: params.state ?? null,
+        city: params.city ?? null,
+        searchTerms,
+        maxResults,
+        targetResults,
+        maxResultsPerTerm: DEFAULT_RESULTS_PER_TERM
+      });
 
       for (const searchTerm of searchTerms) {
-        const links = await scrapePlaceLinksForTerm(page, params, searchTerm, maxResultsPerTerm);
-
-        links.forEach((link) => {
-          if (!linkToTerm.has(link) && linkToTerm.size < maxResults) {
-            linkToTerm.set(link, searchTerm);
-          }
-        });
-
-        if (linkToTerm.size >= maxResults) {
+        if (collectedResults.length >= targetResults) {
           break;
+        }
+
+        if (!searchRuntime) {
+          searchRuntime = await createRuntime();
+        }
+
+        try {
+          const remainingSlots = Math.max(1, targetResults - collectedResults.length);
+          const maxResultsPerTerm = Math.min(DEFAULT_RESULTS_PER_TERM, remainingSlots * 2);
+          const links = await scrapePlaceLinksForTerm(searchRuntime.page, params, searchTerm, maxResultsPerTerm);
+          console.info("[google-maps] collected links", {
+            searchTerm,
+            count: links.length
+          });
+
+          const newLinks = links.filter((link) => {
+            if (seenLinks.has(link)) {
+              return false;
+            }
+            seenLinks.add(link);
+            return true;
+          });
+
+          for (const link of newLinks) {
+            if (collectedResults.length >= targetResults) {
+              break;
+            }
+
+            if (!detailRuntime) {
+              detailRuntime = await createRuntime();
+            }
+
+            try {
+              await detailRuntime.page.goto(link, { waitUntil: "domcontentloaded" });
+              const snapshot = await scrapePlaceDetails(detailRuntime.page);
+
+              if (!snapshot.name) {
+                continue;
+              }
+
+              const company = {
+                source: this.name,
+                name: snapshot.name,
+                niche: params.niche,
+                category: snapshot.category,
+                description: snapshot.description,
+                matchedSearchTerm: searchTerm,
+                websiteUrl: snapshot.websiteUrl,
+                phone: snapshot.phone,
+                email: null,
+                address: snapshot.address,
+                city: snapshot.city ?? params.city ?? null,
+                state: snapshot.state ?? params.state ?? null,
+                country: BRAZIL_COUNTRY_LABEL
+              } satisfies RawCompany;
+
+              collectedResults.push(company);
+              console.info("[google-maps] emitted result", {
+                searchTerm,
+                collectedResults: collectedResults.length,
+                targetResults
+              });
+              await context.onResult?.(company);
+            } catch (error) {
+              console.error(`[${this.name}] failed to extract place`, { link, error });
+              await closeRuntime(detailRuntime);
+              detailRuntime = null;
+            }
+          }
+        } catch (error) {
+          console.error(`[${this.name}] failed to collect links for term`, {
+            searchTerm,
+            error
+          });
+          await closeRuntime(searchRuntime);
+          searchRuntime = null;
         }
       }
 
-      await page.close().catch(() => null);
+      await closeRuntime(searchRuntime);
+      searchRuntime = null;
 
-      const placeEntries = Array.from(linkToTerm.entries()).slice(0, maxResults);
-      const hydratedResults = await mapWithConcurrency<[string, string], RawCompany | null>(
-        placeEntries,
-        DETAIL_CONCURRENCY,
-        async ([link, searchTerm]) => {
-          const detailPage = await browserContext!.newPage();
-        detailPage.setDefaultTimeout(context.timeoutMs ?? 15000);
-
-        try {
-          await detailPage.goto(link, { waitUntil: "domcontentloaded" });
-          const snapshot = await scrapePlaceDetails(detailPage);
-
-          if (!snapshot.name) {
-            return null;
-          }
-
-          return {
-            source: this.name,
-            name: snapshot.name,
-            niche: params.niche,
-            category: snapshot.category,
-            description: snapshot.description,
-            matchedSearchTerm: searchTerm,
-            websiteUrl: snapshot.websiteUrl,
-            phone: snapshot.phone,
-            email: null,
-            address: snapshot.address,
-            city: snapshot.city ?? params.city ?? null,
-            state: snapshot.state ?? params.state ?? null,
-            country: BRAZIL_COUNTRY_LABEL
-          } satisfies RawCompany;
-        } catch (error) {
-          console.error(`[${this.name}] failed to extract place`, { link, error });
-          return null;
-        } finally {
-          await detailPage.close().catch(() => null);
-        }
-        }
-      );
-
-      return hydratedResults.filter((item): item is RawCompany => Boolean(item));
+      return collectedResults;
     } catch (error) {
       console.error(`[${this.name}] search failed`, error);
-      return [];
+      return collectedResults;
     } finally {
-      await browserContext?.close().catch(() => null);
-      await browser?.close().catch(() => null);
+      await closeRuntime(searchRuntime);
+      await closeRuntime(detailRuntime);
     }
   }
 }

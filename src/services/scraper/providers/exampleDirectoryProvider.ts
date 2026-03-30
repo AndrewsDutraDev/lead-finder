@@ -1,9 +1,10 @@
-import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
+import type { Browser, BrowserContext, Page } from "playwright-core";
 import type { RawCompany, SearchRequest } from "@/types/company";
 import type { ProviderContext, ScraperProvider } from "./baseProvider";
 import { delay } from "@/services/scraper/utils/delay";
 import { buildLocationLabel } from "@/services/scraper/utils/query";
 import { BRAZIL_COUNTRY_CODE } from "@/lib/constants";
+import { createBrowserSession, createManagedContext } from "@/services/scraper/browser";
 
 const SEARCH_URL = "https://paginaamarela.com.br/";
 const MAX_COMPANIES = 24;
@@ -183,15 +184,9 @@ export class ExampleDirectoryProvider implements ScraperProvider {
     let browserContext: BrowserContext | null = null;
 
     try {
-      browser = await chromium.launch({
-        headless: context.headless ?? true
-      });
-
-      browserContext = await browser.newContext({
-        locale: "pt-BR",
-        userAgent:
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-      });
+      const session = await createBrowserSession();
+      browser = session.browser;
+      browserContext = await createManagedContext(browser, session.contextOptions);
 
       const page = await browserContext.newPage();
       page.setDefaultTimeout(context.timeoutMs ?? 15000);
@@ -235,6 +230,7 @@ export class ExampleDirectoryProvider implements ScraperProvider {
             state: snapshot.state ?? params.state ?? null,
             country: "Brasil"
           });
+          await context.onResult?.(companies[companies.length - 1]!);
         } catch (error) {
           console.error(`[${this.name}] failed to extract detail page`, { link, error });
         } finally {

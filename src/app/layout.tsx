@@ -1,16 +1,5 @@
 import type { Metadata } from "next";
-import { DM_Sans, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
-
-const sans = DM_Sans({
-  subsets: ["latin"],
-  variable: "--font-sans"
-});
-
-const display = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  variable: "--font-display"
-});
 
 export const metadata: Metadata = {
   title: "Local Lead Finder",
@@ -24,7 +13,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className={`${sans.variable} ${display.variable} font-sans antialiased`}>
+      <body className="font-sans antialiased">
         {children}
       </body>
     </html>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { AppHeader } from "@/components/app-header";
 import { CompaniesTable } from "@/components/companies-table";
 import { EmptyState } from "@/components/empty-state";
@@ -11,7 +11,7 @@ import { ScoreExplanation } from "@/components/score-explanation";
 import { SearchFilters } from "@/components/search-filters";
 import { companiesToCsv } from "@/lib/csv";
 import { searchLeads } from "@/lib/search-api";
-import type { Company, SearchRequest } from "@/types/company";
+import type { Company, SearchRequest, SearchResponse } from "@/types/company";
 
 const initialFilters: SearchRequest = {
   niche: "",
@@ -23,12 +23,13 @@ const initialFilters: SearchRequest = {
 export function LeadFinderShell() {
   const [filters, setFilters] = useState<SearchRequest>(initialFilters);
   const [results, setResults] = useState<Company[]>([]);
+  const [meta, setMeta] = useState<SearchResponse["meta"] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [onlyWithWebsite, setOnlyWithWebsite] = useState(false);
   const [onlyWithEmail, setOnlyWithEmail] = useState(false);
   const [onlyWithPhone, setOnlyWithPhone] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const [isSearching, setIsSearching] = useState(false);
 
   const visibleResults = useMemo(() => {
     return results.filter((company) => {
@@ -42,6 +43,7 @@ export function LeadFinderShell() {
   function handleReset() {
     setFilters(initialFilters);
     setResults([]);
+    setMeta(null);
     setError(null);
     setHasSearched(false);
     setOnlyWithEmail(false);
@@ -69,21 +71,30 @@ export function LeadFinderShell() {
     setError(null);
     setHasSearched(true);
 
-    startTransition(async () => {
-      try {
-        const response = await searchLeads({
-          niche: filters.niche.trim(),
-          country: filters.country,
-          state: filters.state ?? null,
-          city: filters.city ?? null
-        });
+    setResults([]);
+    setMeta(null);
+    setIsSearching(true);
 
-        setResults(response.results);
-      } catch (searchError) {
-        setResults([]);
-        setError(searchError instanceof Error ? searchError.message : "Falha ao buscar resultados.");
+    void searchLeads(
+      {
+        niche: filters.niche.trim(),
+        country: filters.country,
+        state: filters.state ?? null,
+        city: filters.city ?? null
+      },
+      {
+        onProgress(response) {
+          setResults(response.results);
+          setMeta(response.meta);
+        }
       }
-    });
+    )
+      .catch((searchError) => {
+        setError(searchError instanceof Error ? searchError.message : "Falha ao buscar resultados.");
+      })
+      .finally(() => {
+        setIsSearching(false);
+      });
   }
 
   return (
@@ -92,9 +103,9 @@ export function LeadFinderShell() {
 
       <ScoreExplanation />
 
-      <SearchFilters value={filters} isLoading={isPending} onChange={setFilters} onSubmit={handleSearch} onReset={handleReset} />
+      <SearchFilters value={filters} isLoading={isSearching} onChange={setFilters} onSubmit={handleSearch} onReset={handleReset} />
 
-      {results.length > 0 && !isPending ? (
+      {results.length > 0 ? (
         <ResultsToolbar
           total={visibleResults.length}
           onlyWithWebsite={onlyWithWebsite}
@@ -107,10 +118,12 @@ export function LeadFinderShell() {
         />
       ) : null}
 
-      {isPending ? <LoadingState /> : null}
-      {!isPending && error ? <ErrorState message={error} /> : null}
-      {!isPending && !error && results.length > 0 ? <CompaniesTable companies={visibleResults} /> : null}
-      {!isPending && !error && results.length === 0 ? <EmptyState hasSearched={hasSearched} /> : null}
+      {isSearching ? <LoadingState /> : null}
+      {!isSearching && error ? <ErrorState message={error} /> : null}
+      {results.length > 0 ? <CompaniesTable companies={visibleResults} /> : null}
+      {!isSearching && !error && results.length === 0 ? (
+        <EmptyState hasSearched={hasSearched} diagnostics={meta?.diagnostics} />
+      ) : null}
     </main>
   );
 }

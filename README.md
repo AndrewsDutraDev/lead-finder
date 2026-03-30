@@ -1,6 +1,6 @@
 # Local Lead Finder
 
-Aplicação full stack em `Next.js + React + TypeScript` para buscar empresas por nicho e localização no Brasil com scraping server-side usando Playwright.
+Aplicação full stack em `Next.js + React + TypeScript` para buscar empresas por nicho e localização no Brasil com scraping server-side usando Browserless remoto.
 
 ## Scripts
 
@@ -8,6 +8,30 @@ Aplicação full stack em `Next.js + React + TypeScript` para buscar empresas po
 npm install
 npm run dev
 ```
+
+## Variáveis de ambiente
+
+Crie um arquivo `.env.local`:
+
+```bash
+# Obrigatório.
+BROWSERLESS_TOKEN=
+
+# Opcional. Se omitido, usa wss://production-sfo.browserless.io
+BROWSERLESS_URL=
+
+# Opcional. Tem prioridade sobre as variáveis acima.
+# Exemplo: wss://production-sfo.browserless.io/chromium/playwright?token=seu-token
+BROWSERLESS_WS_ENDPOINT=
+```
+
+## Browserless na Vercel
+
+Na Vercel, configure:
+
+- `BROWSERLESS_TOKEN` com o token do Browserless
+
+Opcionalmente, defina `BROWSERLESS_URL` se sua conta usar outro endpoint ou outra região.
 
 ## Arquitetura
 
@@ -22,4 +46,4 @@ npm run dev
 - O scraping roda somente no backend.
 - Os resultados não são persistidos em banco.
 - A exportação CSV usa apenas os dados atuais da sessão.
-- Se o navegador do Playwright ainda não estiver instalado, execute `npx playwright install chromium`.
+- O projeto usa apenas Browserless. Sem `BROWSERLESS_TOKEN`, a busca falha por configuração.
