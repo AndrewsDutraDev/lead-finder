@@ -10,10 +10,10 @@ type CompaniesTableProps = {
 export function CompaniesTable({ companies }: CompaniesTableProps) {
   return (
     <>
-      <div className="hidden overflow-hidden rounded-[28px] border border-white/80 bg-white/85 shadow-soft backdrop-blur lg:block">
+      <div className="hidden overflow-hidden rounded-[30px] border border-white/80 bg-white/90 shadow-soft backdrop-blur lg:block">
         <table className="min-w-full border-collapse text-left">
-          <thead className="bg-ink-50/80">
-            <tr className="text-xs uppercase tracking-[0.18em] text-ink-500">
+          <thead className="bg-slate-50/90">
+            <tr className="text-xs uppercase tracking-[0.18em] text-slate-500">
               <th className="px-5 py-4 font-medium">Empresa</th>
               <th className="px-5 py-4 font-medium">Score</th>
               <th className="px-5 py-4 font-medium">Categoria</th>
@@ -26,11 +26,11 @@ export function CompaniesTable({ companies }: CompaniesTableProps) {
           </thead>
           <tbody>
             {companies.map((company) => (
-              <tr key={company.id} className="border-t border-ink-100 align-top text-sm text-ink-700">
+              <tr key={company.id} className="border-t border-slate-100 align-top text-sm text-slate-700 transition hover:bg-brand-50/40">
                 <td className="px-5 py-4">
                   <div className="min-w-[220px]">
-                    <p className="font-semibold text-ink-900">{company.name}</p>
-                    <p className="mt-1 text-xs text-ink-400">{company.niche}</p>
+                    <p className="font-semibold text-slate-900">{company.name}</p>
+                    <p className="mt-1 text-xs text-slate-400">{company.niche}</p>
                   </div>
                 </td>
                 <td className="px-5 py-4">
@@ -39,7 +39,7 @@ export function CompaniesTable({ companies }: CompaniesTableProps) {
                 <td className="px-5 py-4">{company.category ?? "Não informado"}</td>
                 <td className="px-5 py-4">
                   {company.websiteUrl ? (
-                    <a className="break-all text-mint-600 underline-offset-4 hover:underline" href={company.websiteUrl} target="_blank" rel="noreferrer">
+                    <a className="break-all text-brand-700 underline-offset-4 hover:underline" href={company.websiteUrl} target="_blank" rel="noreferrer">
                       {company.websiteUrl}
                     </a>
                   ) : (

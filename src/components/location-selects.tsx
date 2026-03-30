@@ -10,7 +10,7 @@ type LocationSelectsProps = {
 };
 
 const fieldClassName =
-  "h-12 rounded-2xl border border-ink-200 bg-white px-4 text-sm text-ink-900 outline-none transition placeholder:text-ink-400 focus:border-mint-500 focus:ring-4 focus:ring-mint-100 disabled:bg-ink-50 disabled:text-ink-400";
+  "h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition duration-200 placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100 disabled:bg-slate-100 disabled:text-slate-400";
 
 export function LocationSelects({
   country,
@@ -26,14 +26,14 @@ export function LocationSelects({
   return (
     <>
       <label className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-ink-700">País</span>
+        <span className="text-sm font-medium text-slate-700">País</span>
         <select className={fieldClassName} value={country} onChange={(event) => onCountryChange(event.target.value)}>
           <option value="">Selecione</option>
           <option value="BR">Brasil</option>
         </select>
       </label>
       <label className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-ink-700">Estado</span>
+        <span className="text-sm font-medium text-slate-700">Estado</span>
         <select
           className={fieldClassName}
           value={state}
@@ -49,7 +49,7 @@ export function LocationSelects({
         </select>
       </label>
       <label className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-ink-700">Cidade</span>
+        <span className="text-sm font-medium text-slate-700">Cidade</span>
         <select
           className={fieldClassName}
           value={city}

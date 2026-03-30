@@ -98,8 +98,15 @@ export function LeadFinderShell() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-8 px-4 py-6 md:px-8 md:py-10">
-      <AppHeader />
+    <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-8 md:py-10">
+      <AppHeader
+        hasSearched={hasSearched}
+        isSearching={isSearching}
+        totalResults={visibleResults.length}
+        totalCollected={results.length}
+        durationMs={meta?.durationMs ?? null}
+        providers={meta?.providers ?? []}
+      />
 
       <ScoreExplanation />
 
@@ -108,6 +115,8 @@ export function LeadFinderShell() {
       {results.length > 0 ? (
         <ResultsToolbar
           total={visibleResults.length}
+          collected={results.length}
+          durationMs={meta?.durationMs ?? null}
           onlyWithWebsite={onlyWithWebsite}
           onlyWithEmail={onlyWithEmail}
           onlyWithPhone={onlyWithPhone}
