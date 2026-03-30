@@ -30,7 +30,7 @@ function buildBrowserlessWSEndpoint() {
     return normalizeBrowserlessEndpoint(explicitEndpoint);
   }
 
-  const token = process.env.BROWSERLESS_TOKEN?.trim();
+  const token = process.env.BROWSERLESS_TOKEN?.trim() || process.env.BROWSERLESS_API_KEY?.trim();
   if (!token) {
     return null;
   }
@@ -47,8 +47,28 @@ function buildBrowserlessWSEndpoint() {
   return url.toString();
 }
 
+function isRemoteBrowserExpected() {
+  return (
+    Boolean(process.env.BROWSERLESS_TOKEN?.trim()) ||
+    Boolean(process.env.BROWSERLESS_API_KEY?.trim()) ||
+    Boolean(process.env.BROWSERLESS_WS_ENDPOINT?.trim()) ||
+    process.env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD === "1" ||
+    process.env.VERCEL === "1"
+  );
+}
+
 export async function createBrowserSession(headless = true): Promise<BrowserSession> {
   const browserlessWSEndpoint = buildBrowserlessWSEndpoint();
+  const envSnapshot = {
+    hasBrowserlessToken: Boolean(process.env.BROWSERLESS_TOKEN?.trim()),
+    hasBrowserlessApiKey: Boolean(process.env.BROWSERLESS_API_KEY?.trim()),
+    hasBrowserlessWSEndpoint: Boolean(process.env.BROWSERLESS_WS_ENDPOINT?.trim()),
+    browserlessUrl: process.env.BROWSERLESS_URL?.trim() || null,
+    skipBrowserDownload: process.env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD === "1",
+    vercel: process.env.VERCEL === "1"
+  };
+
+  console.info("[browser] runtime env", envSnapshot);
 
   if (browserlessWSEndpoint) {
     const endpoint = new URL(browserlessWSEndpoint);
@@ -57,7 +77,7 @@ export async function createBrowserSession(headless = true): Promise<BrowserSess
       protocol: endpoint.protocol
     });
 
-    const browser = await chromium.connect(browserlessWSEndpoint);
+    const browser = await chromium.connectOverCDP(browserlessWSEndpoint);
 
     return {
       browser,
@@ -66,6 +86,12 @@ export async function createBrowserSession(headless = true): Promise<BrowserSess
         userAgent: DEFAULT_USER_AGENT
       }
     };
+  }
+
+  if (isRemoteBrowserExpected()) {
+    throw new Error(
+      "Browserless era esperado neste ambiente, mas nenhuma credencial válida foi carregada em runtime. Configure BROWSERLESS_TOKEN ou BROWSERLESS_WS_ENDPOINT."
+    );
   }
 
   console.info("[browser] using local chromium fallback", {

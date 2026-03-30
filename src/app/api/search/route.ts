@@ -18,6 +18,15 @@ export async function POST(request: Request) {
   const startedAt = Date.now();
 
   try {
+    console.info("[api/search] request received", {
+      hasBrowserlessToken: Boolean(process.env.BROWSERLESS_TOKEN?.trim()),
+      hasBrowserlessApiKey: Boolean(process.env.BROWSERLESS_API_KEY?.trim()),
+      hasBrowserlessWSEndpoint: Boolean(process.env.BROWSERLESS_WS_ENDPOINT?.trim()),
+      browserlessUrl: process.env.BROWSERLESS_URL?.trim() || null,
+      skipBrowserDownload: process.env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD === "1",
+      vercel: process.env.VERCEL === "1"
+    });
+
     const body = await request.json();
     const parsed = searchSchema.parse(body);
     const data = await processSearchResults(parsed);
