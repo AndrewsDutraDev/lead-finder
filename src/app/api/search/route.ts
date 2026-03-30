@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { processSearchResults } from "@/services/search/process-search-results";
 import { BRAZIL_COUNTRY_CODE } from "@/lib/constants";
+import type { SearchMeta, SearchResponse, SearchStreamEvent } from "@/types/company";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,24 +24,63 @@ export async function POST(request: Request) {
       hasBrowserlessApiKey: Boolean(process.env.BROWSERLESS_API_KEY?.trim()),
       hasBrowserlessWSEndpoint: Boolean(process.env.BROWSERLESS_WS_ENDPOINT?.trim()),
       browserlessUrl: process.env.BROWSERLESS_URL?.trim() || null,
-      skipBrowserDownload: process.env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD === "1",
       vercel: process.env.VERCEL === "1"
     });
 
     const body = await request.json();
     const parsed = searchSchema.parse(body);
-    const data = await processSearchResults(parsed);
+    const encoder = new TextEncoder();
 
-    return NextResponse.json({
-      results: data.results,
-      meta: {
-        total: data.results.length,
-        durationMs: Date.now() - startedAt,
-        providers: data.providers,
-        expandedTerms: data.expandedTerms,
-        searchQueries: data.searchQueries,
-        query: parsed,
-        diagnostics: data.diagnostics
+    const stream = new ReadableStream({
+      start(controller) {
+        const send = (event: SearchStreamEvent) => {
+          controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+        };
+
+        const withDuration = (meta: SearchMeta): SearchMeta => ({
+          ...meta,
+          durationMs: Date.now() - startedAt
+        });
+
+        void (async () => {
+          try {
+            const data = await processSearchResults(parsed, {
+              onProgress(payload) {
+                send({
+                  type: "progress",
+                  results: payload.results,
+                  meta: withDuration(payload.meta)
+                });
+              }
+            });
+
+            send({
+              type: "complete",
+              results: data.results,
+              meta: withDuration(data.meta)
+            });
+          } catch (error) {
+            const message =
+              error instanceof Error
+                ? error.message
+                : "Não foi possível concluir o scraping no momento. Tente novamente em instantes.";
+
+            send({
+              type: "error",
+              error: message
+            });
+          } finally {
+            controller.close();
+          }
+        })();
+      }
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "application/x-ndjson; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive"
       }
     });
   } catch (error) {

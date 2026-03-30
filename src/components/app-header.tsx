@@ -14,7 +14,7 @@ export function AppHeader() {
         </p>
         <div className="mt-8 grid gap-3 text-sm text-ink-600 sm:grid-cols-3">
           <div className="rounded-2xl border border-ink-100 bg-ink-50/70 px-4 py-3">
-            Scraping server-side com Playwright
+            Scraping server-side com Browserless
           </div>
           <div className="rounded-2xl border border-ink-100 bg-ink-50/70 px-4 py-3">
             Score e deduplicação em tempo real

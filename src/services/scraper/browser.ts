@@ -1,4 +1,4 @@
-import { chromium, type Browser, type BrowserContextOptions } from "playwright";
+import { chromium, type Browser, type BrowserContext, type BrowserContextOptions, type Page } from "playwright-core";
 
 const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
@@ -39,6 +39,7 @@ function buildBrowserlessWSEndpoint() {
     process.env.BROWSERLESS_URL?.trim() || "wss://production-sfo.browserless.io"
   );
   const url = new URL(baseUrl);
+  url.pathname = "/chromium/playwright";
 
   if (!url.searchParams.has("token")) {
     url.searchParams.set("token", token);
@@ -47,58 +48,31 @@ function buildBrowserlessWSEndpoint() {
   return url.toString();
 }
 
-function isRemoteBrowserExpected() {
-  return (
-    Boolean(process.env.BROWSERLESS_TOKEN?.trim()) ||
-    Boolean(process.env.BROWSERLESS_API_KEY?.trim()) ||
-    Boolean(process.env.BROWSERLESS_WS_ENDPOINT?.trim()) ||
-    process.env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD === "1" ||
-    process.env.VERCEL === "1"
-  );
-}
-
-export async function createBrowserSession(headless = true): Promise<BrowserSession> {
+export async function createBrowserSession(): Promise<BrowserSession> {
   const browserlessWSEndpoint = buildBrowserlessWSEndpoint();
   const envSnapshot = {
     hasBrowserlessToken: Boolean(process.env.BROWSERLESS_TOKEN?.trim()),
     hasBrowserlessApiKey: Boolean(process.env.BROWSERLESS_API_KEY?.trim()),
     hasBrowserlessWSEndpoint: Boolean(process.env.BROWSERLESS_WS_ENDPOINT?.trim()),
     browserlessUrl: process.env.BROWSERLESS_URL?.trim() || null,
-    skipBrowserDownload: process.env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD === "1",
     vercel: process.env.VERCEL === "1"
   };
 
   console.info("[browser] runtime env", envSnapshot);
 
-  if (browserlessWSEndpoint) {
-    const endpoint = new URL(browserlessWSEndpoint);
-    console.info("[browser] using browserless", {
-      host: endpoint.host,
-      protocol: endpoint.protocol
-    });
-
-    const browser = await chromium.connectOverCDP(browserlessWSEndpoint);
-
-    return {
-      browser,
-      contextOptions: {
-        locale: "pt-BR",
-        userAgent: DEFAULT_USER_AGENT
-      }
-    };
-  }
-
-  if (isRemoteBrowserExpected()) {
+  if (!browserlessWSEndpoint) {
     throw new Error(
-      "Browserless era esperado neste ambiente, mas nenhuma credencial válida foi carregada em runtime. Configure BROWSERLESS_TOKEN ou BROWSERLESS_WS_ENDPOINT."
+      "Browserless é obrigatório neste projeto. Configure BROWSERLESS_TOKEN, BROWSERLESS_API_KEY ou BROWSERLESS_WS_ENDPOINT."
     );
   }
 
-  console.info("[browser] using local chromium fallback", {
-    headless
+  const endpoint = new URL(browserlessWSEndpoint);
+  console.info("[browser] using browserless", {
+    host: endpoint.host,
+    protocol: endpoint.protocol
   });
 
-  const browser = await chromium.launch({ headless });
+  const browser = await chromium.connect(browserlessWSEndpoint);
 
   return {
     browser,
@@ -107,4 +81,14 @@ export async function createBrowserSession(headless = true): Promise<BrowserSess
       userAgent: DEFAULT_USER_AGENT
     }
   };
+}
+
+export async function createManagedContext(browser: Browser, contextOptions: BrowserContextOptions): Promise<BrowserContext> {
+  console.info("[browser] creating browserless context");
+  return browser.newContext(contextOptions);
+}
+
+export async function createManagedPage(context: BrowserContext): Promise<Page> {
+  console.info("[browser] creating browserless page");
+  return context.newPage();
 }

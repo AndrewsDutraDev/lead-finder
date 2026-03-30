@@ -69,15 +69,34 @@ export type SearchDiagnostics = {
   scoredCount: number;
 };
 
+export type SearchMeta = {
+  total: number;
+  durationMs: number;
+  providers: string[];
+  expandedTerms?: string[];
+  searchQueries?: string[];
+  query: SearchRequest;
+  diagnostics?: SearchDiagnostics;
+};
+
 export type SearchResponse = {
   results: Company[];
-  meta: {
-    total: number;
-    durationMs: number;
-    providers: string[];
-    expandedTerms?: string[];
-    searchQueries?: string[];
-    query: SearchRequest;
-    diagnostics?: SearchDiagnostics;
-  };
+  meta: SearchMeta;
 };
+
+export type SearchStreamEvent =
+  | {
+      type: "progress";
+      results: Company[];
+      meta: SearchMeta;
+    }
+  | {
+      type: "complete";
+      results: Company[];
+      meta: SearchMeta;
+    }
+  | {
+      type: "error";
+      error: string;
+      meta?: SearchMeta;
+    };

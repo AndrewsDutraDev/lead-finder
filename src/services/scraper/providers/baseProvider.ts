@@ -7,6 +7,7 @@ export type ProviderContext = {
   searchTerm?: string;
   searchTerms?: string[];
   searchQuery?: string;
+  onResult?: (company: RawCompany) => Promise<void> | void;
 };
 
 export interface ScraperProvider {
