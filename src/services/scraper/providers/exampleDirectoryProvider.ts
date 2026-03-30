@@ -8,6 +8,7 @@ import { createBrowserSession, createManagedContext } from "@/services/scraper/b
 
 const SEARCH_URL = "https://paginaamarela.com.br/";
 const MAX_COMPANIES = 24;
+const DEFAULT_MAX_PAGES_PER_SEARCH_TERM = 4;
 
 type DetailSnapshot = {
   name: string | null;
@@ -29,10 +30,10 @@ async function dismissCookies(page: Page) {
   }
 }
 
-async function collectCompanyLinks(page: Page, maxResults: number) {
+async function collectCompanyLinks(page: Page, maxResults: number, maxPagesPerSearchTerm: number) {
   const seen = new Set<string>();
 
-  for (let attempt = 0; attempt < 8 && seen.size < maxResults; attempt += 1) {
+  for (let pageIndex = 0; pageIndex < maxPagesPerSearchTerm && seen.size < maxResults; pageIndex += 1) {
     await page.waitForLoadState("domcontentloaded");
     await page.waitForTimeout(900);
 
@@ -58,6 +59,10 @@ async function collectCompanyLinks(page: Page, maxResults: number) {
       .catch(() => null);
 
     if (!nextHref || nextHref === page.url()) {
+      break;
+    }
+
+    if (pageIndex >= maxPagesPerSearchTerm - 1) {
       break;
     }
 
@@ -184,6 +189,10 @@ export class ExampleDirectoryProvider implements ScraperProvider {
     let browserContext: BrowserContext | null = null;
 
     try {
+      const maxPagesPerSearchTerm = Math.max(
+        1,
+        Math.min(context.maxPagesPerSearchTerm ?? DEFAULT_MAX_PAGES_PER_SEARCH_TERM, DEFAULT_MAX_PAGES_PER_SEARCH_TERM)
+      );
       const session = await createBrowserSession();
       browser = session.browser;
       browserContext = await createManagedContext(browser, session.contextOptions);
@@ -205,7 +214,7 @@ export class ExampleDirectoryProvider implements ScraperProvider {
       await page.waitForURL(/\/empresas\//, { timeout: context.timeoutMs ?? 15000 });
       await delay(1200);
 
-      const links = await collectCompanyLinks(page, context.maxResults ?? MAX_COMPANIES);
+      const links = await collectCompanyLinks(page, context.maxResults ?? MAX_COMPANIES, maxPagesPerSearchTerm);
       const companies: RawCompany[] = [];
 
       for (const link of links) {

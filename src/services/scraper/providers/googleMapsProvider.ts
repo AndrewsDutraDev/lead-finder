@@ -7,9 +7,9 @@ import { delay } from "@/services/scraper/utils/delay";
 import { createBrowserSession, createManagedContext, createManagedPage } from "@/services/scraper/browser";
 
 const GOOGLE_MAPS_BASE_URL = "https://www.google.com/maps/search/";
-const DEFAULT_MAX_RESULTS = 40;
-const DEFAULT_RESULTS_PER_TERM = 8;
-const EARLY_RETURN_TARGET = 12;
+const GOOGLE_MAPS_RESULTS_PER_PAGE = 20;
+const DEFAULT_MAX_PAGES_PER_SEARCH_TERM = 4;
+const MAX_SEARCH_TERMS = 6;
 type GoogleMapsSnapshot = {
   name: string | null;
   category: string | null;
@@ -43,7 +43,7 @@ async function dismissConsent(page: Page) {
   }
 }
 
-async function collectPlaceLinks(page: Page, maxResults: number) {
+async function collectPlaceLinks(page: Page, maxResults: number, maxPagesPerSearchTerm: number) {
   const feed = page.locator('[role="feed"]');
   const seen = new Set<string>();
   let stagnantAttempts = 0;
@@ -51,8 +51,9 @@ async function collectPlaceLinks(page: Page, maxResults: number) {
     .first()
     .isVisible({ timeout: 4000 })
     .catch(() => false);
+  const maxScrollAttempts = Math.max(12, maxPagesPerSearchTerm * 10);
 
-  for (let attempt = 0; attempt < 14 && seen.size < maxResults && stagnantAttempts < 3; attempt += 1) {
+  for (let attempt = 0; attempt < maxScrollAttempts && seen.size < maxResults && stagnantAttempts < 4; attempt += 1) {
     const previousSize = seen.size;
     const hrefs = feedVisible
       ? await feed.locator('a[href*="/maps/place/"]').evaluateAll((nodes) =>
@@ -90,18 +91,25 @@ async function collectPlaceLinks(page: Page, maxResults: number) {
   return Array.from(seen).slice(0, maxResults);
 }
 
-async function scrapePlaceLinksForTerm(page: Page, params: SearchRequest, searchTerm: string, maxResults: number) {
+async function scrapePlaceLinksForTerm(
+  page: Page,
+  params: SearchRequest,
+  searchTerm: string,
+  maxResults: number,
+  maxPagesPerSearchTerm: number
+) {
   const searchUrl = `${GOOGLE_MAPS_BASE_URL}${encodeURIComponent(buildGoogleMapsQuery(params, searchTerm))}`;
   console.info("[google-maps] searching term", {
     searchTerm,
     searchUrl,
-    maxResults
+    maxResults,
+    maxPagesPerSearchTerm
   });
   await page.goto(searchUrl, { waitUntil: "domcontentloaded" });
   await dismissConsent(page);
   await delay(1800);
 
-  return collectPlaceLinks(page, maxResults);
+  return collectPlaceLinks(page, maxResults, maxPagesPerSearchTerm);
 }
 
 function parseCityAndState(address: string | null) {
@@ -210,9 +218,13 @@ export class GoogleMapsProvider implements ScraperProvider {
     };
 
     try {
-      const searchTerms = (context.searchTerms?.filter(Boolean) ?? [context.searchTerm ?? params.niche]).slice(0, 4);
-      const maxResults = context.maxResults ?? DEFAULT_MAX_RESULTS;
-      const targetResults = Math.min(maxResults, EARLY_RETURN_TARGET);
+      const searchTerms = (context.searchTerms?.filter(Boolean) ?? [context.searchTerm ?? params.niche]).slice(0, MAX_SEARCH_TERMS);
+      const maxPagesPerSearchTerm = Math.max(
+        1,
+        Math.min(context.maxPagesPerSearchTerm ?? DEFAULT_MAX_PAGES_PER_SEARCH_TERM, DEFAULT_MAX_PAGES_PER_SEARCH_TERM)
+      );
+      const maxResults =
+        context.maxResults ?? Math.max(searchTerms.length * GOOGLE_MAPS_RESULTS_PER_PAGE * maxPagesPerSearchTerm, 20);
       const seenLinks = new Set<string>();
 
       console.info("[google-maps] provider input", {
@@ -222,12 +234,12 @@ export class GoogleMapsProvider implements ScraperProvider {
         city: params.city ?? null,
         searchTerms,
         maxResults,
-        targetResults,
-        maxResultsPerTerm: DEFAULT_RESULTS_PER_TERM
+        maxPagesPerSearchTerm,
+        maxResultsPerTerm: GOOGLE_MAPS_RESULTS_PER_PAGE * maxPagesPerSearchTerm
       });
 
       for (const searchTerm of searchTerms) {
-        if (collectedResults.length >= targetResults) {
+        if (collectedResults.length >= maxResults) {
           break;
         }
 
@@ -236,9 +248,15 @@ export class GoogleMapsProvider implements ScraperProvider {
         }
 
         try {
-          const remainingSlots = Math.max(1, targetResults - collectedResults.length);
-          const maxResultsPerTerm = Math.min(DEFAULT_RESULTS_PER_TERM, remainingSlots * 2);
-          const links = await scrapePlaceLinksForTerm(searchRuntime.page, params, searchTerm, maxResultsPerTerm);
+          const remainingSlots = Math.max(1, maxResults - collectedResults.length);
+          const maxResultsPerTerm = Math.min(GOOGLE_MAPS_RESULTS_PER_PAGE * maxPagesPerSearchTerm, remainingSlots);
+          const links = await scrapePlaceLinksForTerm(
+            searchRuntime.page,
+            params,
+            searchTerm,
+            maxResultsPerTerm,
+            maxPagesPerSearchTerm
+          );
           console.info("[google-maps] collected links", {
             searchTerm,
             count: links.length
@@ -253,7 +271,7 @@ export class GoogleMapsProvider implements ScraperProvider {
           });
 
           for (const link of newLinks) {
-            if (collectedResults.length >= targetResults) {
+            if (collectedResults.length >= maxResults) {
               break;
             }
 
@@ -289,7 +307,7 @@ export class GoogleMapsProvider implements ScraperProvider {
               console.info("[google-maps] emitted result", {
                 searchTerm,
                 collectedResults: collectedResults.length,
-                targetResults
+                maxResults
               });
               await context.onResult?.(company);
             } catch (error) {

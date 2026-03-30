@@ -3,6 +3,8 @@ import { GoogleMapsProvider } from "@/services/scraper/providers/googleMapsProvi
 import type { ScraperProvider } from "@/services/scraper/providers/baseProvider";
 
 const providers: ScraperProvider[] = [new GoogleMapsProvider()];
+const MAX_PAGES_PER_SEARCH_TERM = 4;
+const MAX_RESULTS_PER_PAGE = 20;
 
 type SearchCompaniesOptions = {
   onResult?: (company: RawCompany) => Promise<void> | void;
@@ -24,7 +26,8 @@ export async function searchCompanies(
     try {
       const providerResults = await provider.search(params, {
         searchTerms: searchQueries.map((query) => query.term),
-        maxResults: 20,
+        maxResults: Math.max(20, searchQueries.length * MAX_PAGES_PER_SEARCH_TERM * MAX_RESULTS_PER_PAGE),
+        maxPagesPerSearchTerm: MAX_PAGES_PER_SEARCH_TERM,
         timeoutMs: 12000,
         onResult: async (company) => {
           streamedResultCount += 1;

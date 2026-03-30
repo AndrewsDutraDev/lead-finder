@@ -3,6 +3,7 @@ import type { RawCompany, SearchRequest } from "@/types/company";
 export type ProviderContext = {
   headless?: boolean;
   maxResults?: number;
+  maxPagesPerSearchTerm?: number;
   timeoutMs?: number;
   searchTerm?: string;
   searchTerms?: string[];
